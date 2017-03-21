@@ -1,0 +1,19 @@
+var config = {
+    rethinkdb: {
+        host: 'rethinkdb',
+        user: 'admin',
+        password: '',
+        db: 'unifi',
+        max: 5
+    },
+    ssl: {
+        rejectUnauthorized: false,
+        ca: 'cacert'
+    },
+    pushover:  {
+        user: 'USERKEY',
+        token: 'TOKEN',
+    }
+};
+
+module.exports = config;

@@ -1,0 +1,68 @@
+var assert = require('assert-plus');
+var config = require('./etc/config');
+var fs = require('fs');
+var path = require('path');
+var push = require( 'pushover-notifications' );
+var r = require('rethinkdb');
+var rdbpool = require('rethinkdb-pool');
+var util = require('util');
+
+
+assert.object(config.rethinkdb, 'Need a rethinkdb configuration');
+var database_config  = config.rethinkdb;
+if (config.ssl) {
+    config.ssl.ca = fs.readFileSync(path.join(__dirname, config.ssl.ca));
+    database_config.ssl = config.ssl;
+}
+
+assert.object(config.pushover, 'Need pushover configuration');
+assert.string(config.pushover.user, 'Pushover user');
+assert.string(config.pushover.token, 'Pushover token');
+var p = new push( {
+    user: config.pushover.user,
+    token: config.pushover.token
+});
+
+var pool = new rdbpool(database_config);
+
+function sendPushover(uevent) {
+    assert.object(uevent);
+    var msg = {
+        message: util.format('Motion detected %s', uevent.camera_desc),
+        title: 'Motion',
+        sound: 'gamelan',
+        device: 'melpomene',
+        priority: 0
+    };
+
+    p.send(msg, function(err, result) {
+        if (err) console.log(err);
+    });
+}
+
+function processEvent(row) {
+    var uevent = row.new_val;
+    assert.object(uevent, 'event should be an object');
+    switch (uevent.event) {
+        case 'STARTED':
+            sendPushover(uevent);
+        case 'ADDING':
+            break;
+        case 'ENDED':
+            break;
+        case 'CLOSING':
+            break;
+        default:
+            throw new Error('Unknown event type');
+    }
+}
+
+var eventsQuery = r.table('events').changes();
+
+pool.run(eventsQuery, function(err, cursor) {
+    if (err) throw err;
+    cursor.each(function(err, row) {
+        if (err) throw err;
+        processEvent(row);
+    });
+});
