@@ -11,8 +11,12 @@ var config = {
         ca: 'cacert'
     },
     pushover:  {
-        user: 'USERKEY',
-        token: 'TOKEN',
+	user: 'USERKEY',
+	token: 'TOKEN',
+	device: 'device1, device2',
+	sound: 'gamelan',
+	title: 'Motion',
+	priority: 0
     }
 };
 

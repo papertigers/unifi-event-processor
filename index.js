@@ -29,11 +29,13 @@ function sendPushover(uevent) {
     assert.object(uevent);
     var msg = {
         message: util.format('Motion detected %s', uevent.camera_desc),
-        title: 'Motion',
-        sound: 'gamelan',
-        device: 'melpomene',
-        priority: 0
+        title: config.pushover.title || 'Motion',
+        sound: config.pushover.sound || 'gamelan',
+        priority: config.pushover.priority || 0
     };
+    if (config.pushover.device) {
+        msg.device = config.pushover.device
+    }
 
     p.send(msg, function(err, result) {
         if (err) console.log(err);
