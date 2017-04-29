@@ -29,21 +29,47 @@ var hours = config.workinghours || '00:00-11:59';
 var pool = new rdbpool(database_config);
 var wh = new WorkHours(hours);
 
-function sendPushover(uevent) {
-    if (!wh.test(new Date())) { return };
-    assert.object(uevent);
-    var msg = {
-        message: util.format('Motion detected %s', uevent.camera_desc),
-        title: config.pushover.title || 'Motion',
-        sound: config.pushover.sound || 'gamelan',
-        priority: config.pushover.priority || 0
-    };
-    if (config.pushover.device) {
-        msg.device = config.pushover.device
-    }
+function shouldSendPushover(cb) {
+    assert.func(cb, "Callback function");
+    if (!wh.test(new Date())) { return cb(false)};
+    var q = r.table('pushover').orderBy({index: r.desc('date')}).limit(1);
+    pool.run(q, function(err, cursor) {
+        if (err) throw err;
+        cursor.toArray(function(err, results) {
+            if (err) throw err;
+            var last = results[0] || {date: '0'};
+            if (((Date.now() / 1000) - (last.date / 1000)) <  300) {
+                return cb(false);
+            }
+            cb(true);
+        });
+    });
+}
 
-    p.send(msg, function(err, result) {
-        if (err) console.log(err);
+function sendPushover(uevent) {
+    assert.object(uevent);
+    shouldSendPushover( function(shouldSend) {
+        if (!shouldSend) { return };
+        var msg = {
+            message: util.format('Motion detected %s', uevent.camera_desc),
+            title: config.pushover.title || 'Motion',
+            sound: config.pushover.sound || 'gamelan',
+            priority: config.pushover.priority || 0
+        };
+        if (config.pushover.device) {
+            msg.device = config.pushover.device
+        }
+
+        p.send(msg, function(err, result) {
+            if (err) {
+                return console.log(err);
+            }
+            msg.date = Date.now();
+            var q = r.table('pushover').insert(msg);
+            pool.run(q, function(err, result) {
+                if (err) throw err;
+            });
+        });
     });
 }
 
