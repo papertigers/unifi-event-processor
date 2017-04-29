@@ -17,7 +17,8 @@ var config = {
 	sound: 'gamelan',
 	title: 'Motion',
 	priority: 0
-    }
+    },
+    workinghours: '00:00-09:00'
 };
 
 module.exports = config;

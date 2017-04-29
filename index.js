@@ -5,6 +5,7 @@ var path = require('path');
 var push = require( 'pushover-notifications' );
 var r = require('rethinkdb');
 var rdbpool = require('rethinkdb-pool');
+var WorkHours = require('working-hours').WorkingHours;
 var util = require('util');
 
 
@@ -23,9 +24,13 @@ var p = new push( {
     token: config.pushover.token
 });
 
+var hours = config.workinghours || '00:00-11:59';
+
 var pool = new rdbpool(database_config);
+var wh = new WorkHours(hours);
 
 function sendPushover(uevent) {
+    if (!wh.test(new Date())) { return };
     assert.object(uevent);
     var msg = {
         message: util.format('Motion detected %s', uevent.camera_desc),
