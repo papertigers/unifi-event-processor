@@ -29,10 +29,17 @@ var hours = config.workinghours || '00:00-11:59';
 var pool = new rdbpool(database_config);
 var wh = new WorkHours(hours);
 
-function shouldSendPushover(cb) {
+function shouldSendPushover(msg, cb) {
+    assert.string(msg, "Pushover message");
     assert.func(cb, "Callback function");
+
     if (!wh.test(new Date())) { return cb(false)};
-    var q = r.table('pushover').orderBy({index: r.desc('date')}).limit(1);
+
+    var q = r.table('pushover')
+        .orderBy({index: r.desc('date')})
+        .filter({message: msg})
+        .limit(1);
+
     pool.run(q, function(err, cursor) {
         if (err) throw err;
         cursor.toArray(function(err, results) {
@@ -48,10 +55,11 @@ function shouldSendPushover(cb) {
 
 function sendPushover(uevent) {
     assert.object(uevent);
-    shouldSendPushover( function(shouldSend) {
+    var m = util.format('Motion detected %s', uevent.camera_desc)
+    shouldSendPushover(m, function(shouldSend) {
         if (!shouldSend) { return };
         var msg = {
-            message: util.format('Motion detected %s', uevent.camera_desc),
+            message: m,
             title: config.pushover.title || 'Motion',
             sound: config.pushover.sound || 'gamelan',
             priority: config.pushover.priority || 0
